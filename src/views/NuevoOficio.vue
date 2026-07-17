@@ -442,7 +442,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabaseClient'
 import { showNotification } from '@/events/notificationEvents'
-import { PDFDocument, rgb, StandardFonts, PDFName, PDFArray, PDFString } from 'pdf-lib'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import QRCode from 'qrcode'
 import {
   ArrowLeftIcon,
@@ -795,37 +795,10 @@ const generarOficiosMasivos = async () => {
         height: qrSize,
       })
 
-      const msgY1 = qrY - 10
-      const msgY2 = qrY - 17
-      const msgY3 = qrY - 24
-
-      firstPage.drawText("Escanee el código QR o", { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
-      firstPage.drawText("haga clic aquí", { x: qrX - 8, y: msgY2, size: 5.5, font: fontBold, color: rgb(0, 0.4, 0.8) })
-      firstPage.drawLine({
-        start: { x: qrX - 8, y: msgY2 - 1.2 },
-        end: { x: qrX + 28, y: msgY2 - 1.2 },
-        thickness: 0.4,
-        color: rgb(0, 0.4, 0.8)
-      })
-      firstPage.drawText(" para verificar", { x: qrX + 28, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
-      firstPage.drawText("la autenticidad de este oficio.", { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
-
-      const linkAnnotation = tempDoc.context.obj({
-        Type: 'Annot',
-        Subtype: 'Link',
-        Rect: [qrX - 10, msgY2 - 3, qrX + 30, msgY2 + 6],
-        Border: [0, 0, 0],
-        A: {
-          Type: 'Action',
-          S: 'URI',
-          URI: PDFString.of(validationUrl),
-        },
-      })
-
-      const linkAnnotationRef = tempDoc.context.register(linkAnnotation)
-      const annots = firstPage.node.lookup(PDFName.of('Annots'), PDFArray) || tempDoc.context.obj([])
-      annots.push(linkAnnotationRef)
-      firstPage.node.set(PDFName.of('Annots'), annots)
+      const msgText = 'Escanee el QR para verificar este oficio.'
+      const msgTextWidth = fontRegular.widthOfTextAtSize(msgText, 5.5)
+      const msgX = qrX + qrSize / 2 - msgTextWidth / 2
+      firstPage.drawText(msgText, { x: msgX, y: qrY - 10, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
 
       firstPage.drawText(codigoVisible, {
         x: ajustesCoords.value.correlativo.x,
@@ -955,13 +928,11 @@ const generarOficiosMasivoEnBlanco = async () => {
       // Dibujar QR
       firstPage.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize })
 
-      // Texto debajo del QR (modo BLANCO: sin link clicable)
-      const msgY1 = qrY - 10
-      const msgY2 = qrY - 17
-      const msgY3 = qrY - 24
-      firstPage.drawText('Escanee el código QR para', { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
-      firstPage.drawText('verificar la autenticidad', { x: qrX - 8, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
-      firstPage.drawText('de este oficio.', { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      // Texto centrado debajo del QR
+      const msgText = 'Escanee el QR para verificar este oficio.'
+      const msgTextWidth = fontRegular.widthOfTextAtSize(msgText, 5.5)
+      const msgX = qrX + qrSize / 2 - msgTextWidth / 2
+      firstPage.drawText(msgText, { x: msgX, y: qrY - 10, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
 
       // Correlativo
       firstPage.drawText(codigoVisible, {
@@ -1146,90 +1117,10 @@ const descargarYTimbrarPDF = async (correlativo, token, payload) => {
       height: qrSize,
     })
 
-    const msgY1 = qrY - 10
-    const msgY2 = qrY - 17
-    const msgY3 = qrY - 24
-
-    if (payload.tipo_emision === 'DIGITAL') {
-      firstPage.drawText("Escanee el código QR o", {
-        x: qrX - 8,
-        y: msgY1,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-
-      firstPage.drawText("haga clic aquí", {
-        x: qrX - 8,
-        y: msgY2,
-        size: 5.5,
-        font: fontBold,
-        color: rgb(0, 0.4, 0.8)
-      })
-
-      firstPage.drawLine({
-        start: { x: qrX - 8, y: msgY2 - 1.2 },
-        end: { x: qrX + 28, y: msgY2 - 1.2 },
-        thickness: 0.4,
-        color: rgb(0, 0.4, 0.8)
-      })
-
-      firstPage.drawText(" para verificar", {
-        x: qrX + 28,
-        y: msgY2,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-
-      firstPage.drawText("la autenticidad de este oficio.", {
-        x: qrX - 8,
-        y: msgY3,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-
-      const linkAnnotation = pdfDoc.context.obj({
-        Type: 'Annot',
-        Subtype: 'Link',
-        Rect: [qrX - 10, msgY2 - 3, qrX + 30, msgY2 + 6],
-        Border: [0, 0, 0],
-        A: {
-          Type: 'Action',
-          S: 'URI',
-          URI: PDFString.of(validationUrl),
-        },
-      })
-
-      const linkAnnotationRef = pdfDoc.context.register(linkAnnotation)
-      const annots = firstPage.node.lookup(PDFName.of('Annots'), PDFArray) || pdfDoc.context.obj([])
-      annots.push(linkAnnotationRef)
-      firstPage.node.set(PDFName.of('Annots'), annots)
-
-    } else {
-      firstPage.drawText("Escanee el código QR para", {
-        x: qrX - 8,
-        y: msgY1,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-      firstPage.drawText("verificar la autenticidad", {
-        x: qrX - 8,
-        y: msgY2,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-      firstPage.drawText("de este oficio.", {
-        x: qrX - 8,
-        y: msgY3,
-        size: 5.5,
-        font: fontRegular,
-        color: rgb(0.4, 0.4, 0.4)
-      })
-    }
+    const msgText = 'Escanee el QR para verificar este oficio.'
+    const msgTextWidth = fontRegular.widthOfTextAtSize(msgText, 5.5)
+    const msgX = qrX + qrSize / 2 - msgTextWidth / 2
+    firstPage.drawText(msgText, { x: msgX, y: qrY - 10, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
 
     const correlativoX = ajustesCoords.value.correlativo.x
     const correlativoY = ajustesCoords.value.correlativo.y
