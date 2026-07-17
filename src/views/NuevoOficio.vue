@@ -99,11 +99,129 @@
         <Transition name="fade" mode="out-in">
           <div v-if="!formulario.es_formato_vacio" :key="formulario.tipo" class="space-y-6">
             <!-- CASO A: OFICIO ECONÓMICO -->
-            <div v-if="formulario.tipo === 'Económico'" class="space-y-3">
-              <div class="space-y-1">
+            <div v-if="formulario.tipo === 'Económico'" class="space-y-4">
+              <!-- Selector de Modo: Individual, Masivo o En Blanco Masivo -->
+              <div class="flex gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button type="button" @click="modoEconomico = 'individual'"
+                  class="flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all"
+                  :class="modoEconomico === 'individual' ? 'bg-white text-jade-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+                  Individual
+                </button>
+                <button type="button" @click="modoEconomico = 'masivo'"
+                  class="flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all"
+                  :class="modoEconomico === 'masivo' ? 'bg-white text-jade-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+                  Carga Masiva
+                </button>
+                <button type="button" @click="modoEconomico = 'masivo-blanco'"
+                  class="flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all"
+                  :class="modoEconomico === 'masivo-blanco' ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+                  En Blanco
+                </button>
+              </div>
+
+              <!-- Modo Individual -->
+              <div v-if="modoEconomico === 'individual'" class="space-y-1">
                 <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Nombre de la persona</label>
-                <input v-model="economicoMeta.nombre" type="text" required placeholder="Ej. JUAN PEREZ MARTINEZ"
+                <input v-model="economicoMeta.nombre" type="text" :required="modoEconomico === 'individual'" placeholder="Ej. JUAN PEREZ MARTINEZ"
                   class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition duration-200 hover:border-slate-300 focus:bg-white focus:ring-4 focus:ring-jade-500/10 focus:border-jade-500 uppercase" />
+              </div>
+
+              <!-- Modo Carga Masiva (Excel) -->
+              <div v-else-if="modoEconomico === 'masivo'" class="space-y-4">
+                <!-- Dropzone/File input -->
+                <div class="border-2 border-dashed border-slate-200 hover:border-jade-500 rounded-2xl p-6 text-center cursor-pointer transition relative bg-slate-50/50">
+                  <input type="file" @change="procesarArchivoMasivo" accept=".xlsx, .xls, .csv, .txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <div class="space-y-2">
+                    <div class="text-slate-400 flex justify-center">
+                      <DocumentArrowUpIcon class="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p class="text-xs font-black text-slate-600 uppercase tracking-wide">Arrastra o selecciona un archivo Excel / CSV / TXT</p>
+                    <p class="text-[9px] text-slate-400">Se buscarán nombres en la primera columna del archivo</p>
+                  </div>
+                </div>
+
+                <!-- Pegar lista -->
+                <div class="space-y-2">
+                  <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">O pega una lista de nombres (Uno por línea)</label>
+                  <textarea v-model="listaNombresPegados" rows="4" placeholder="JUAN PEREZ MARTINEZ&#10;MARIA LOPEZ DIAZ&#10;CARLOS TORRES VÁSQUEZ"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-700 outline-none transition duration-200 hover:border-slate-300 focus:bg-white focus:ring-4 focus:ring-jade-500/10 focus:border-jade-500 uppercase resize-none"></textarea>
+                  <button type="button" @click="procesarNombresPegados" :disabled="!listaNombresPegados.trim()"
+                    class="w-full bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-extrabold text-[10px] uppercase tracking-wider py-2 rounded-xl transition duration-150 active:scale-95 flex items-center justify-center gap-1.5 min-h-[36px]">
+                    <span>Agregar nombres de la lista</span>
+                  </button>
+                </div>
+
+                <!-- Vista previa -->
+                <div v-if="nombresCargados.length > 0" class="bg-jade-50/30 border border-jade-100 rounded-2xl p-4 space-y-3">
+                  <div class="flex justify-between items-center pb-2 border-b border-jade-100">
+                    <span class="text-xs font-black uppercase tracking-wider text-jade-800">
+                      Nombres Detectados ({{ nombresCargados.length }})
+                    </span>
+                    <button type="button" @click="limpiarCargaMasiva" class="text-[10px] text-red-600 hover:text-red-800 font-extrabold uppercase">
+                      Limpiar todo
+                    </button>
+                  </div>
+                  <div class="max-h-48 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar text-[11px] font-bold text-slate-700">
+                    <div v-for="(nombre, idx) in nombresCargados" :key="idx" class="flex justify-between items-center bg-white border border-slate-100 px-3 py-2 rounded-xl shadow-sm">
+                      <span class="truncate pr-2">{{ idx + 1 }}. {{ nombre }}</span>
+                      <button type="button" @click="eliminarNombreCargado(idx)" class="text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">
+                        <TrashIcon class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Modo En Blanco Masivo -->
+              <div v-else-if="modoEconomico === 'masivo-blanco'" class="space-y-4 animate-in fade-in duration-200">
+                <!-- Panel informativo -->
+                <div class="bg-violet-50/60 border border-violet-200 rounded-2xl p-4 flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center flex-shrink-0 border border-violet-200/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                    </svg>
+                  </div>
+                  <div class="text-[11px] font-semibold leading-relaxed">
+                    <p class="uppercase font-black text-violet-900">PDF Masivo en Blanco</p>
+                    <p class="mt-0.5 text-violet-800">Se registrarán <strong>{{ cantidadBlanco }}</strong> oficios económicos en blanco en el sistema y se descargará un único PDF listo para imprimir. El destinatario se completa manualmente a bolígrafo.</p>
+                  </div>
+                </div>
+
+                <!-- Input de cantidad -->
+                <div class="space-y-1.5">
+                  <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Cantidad de oficios a generar</label>
+                  <div class="flex items-center gap-3">
+                    <button type="button"
+                      @click="cantidadBlanco = Math.max(1, cantidadBlanco - 1)"
+                      class="w-10 h-10 flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-lg flex items-center justify-center transition active:scale-90">
+                      −
+                    </button>
+                    <input
+                      v-model.number="cantidadBlanco"
+                      type="number" min="1" max="500"
+                      class="flex-1 text-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-2xl font-black text-slate-900 outline-none transition duration-200 focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                    />
+                    <button type="button"
+                      @click="cantidadBlanco = Math.min(500, cantidadBlanco + 1)"
+                      class="w-10 h-10 flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-lg flex items-center justify-center transition active:scale-90">
+                      +
+                    </button>
+                  </div>
+                  <p class="text-[9px] text-slate-400 font-bold ml-1 text-center">Mínimo 1 — Máximo 500 oficios por descarga</p>
+                </div>
+
+                <!-- Atajos de cantidad rápida -->
+                <div class="flex flex-wrap gap-2">
+                  <button v-for="qty in [10, 25, 50, 100, 200]" :key="qty" type="button"
+                    @click="cantidadBlanco = qty"
+                    class="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg border transition-all"
+                    :class="cantidadBlanco === qty
+                      ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-violet-400 hover:text-violet-700'"
+                  >
+                    {{ qty }} oficios
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -294,7 +412,11 @@
 
         <!-- Botón de Envío / Descarga (Táctil, alto consistente) -->
         <button type="submit" :disabled="generando"
-          class="w-full bg-gradient-to-r from-jade-600 to-jade-500 hover:from-jade-700 hover:to-jade-600 text-white font-extrabold text-xs uppercase tracking-widest py-3.5 rounded-xl shadow-lg shadow-jade-600/10 hover:shadow-jade-600/20 transition duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]">
+          class="w-full text-white font-extrabold text-xs uppercase tracking-widest py-3.5 rounded-xl shadow-lg transition duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
+          :class="(formulario.tipo === 'Económico' && modoEconomico === 'masivo-blanco')
+            ? 'bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-700 hover:to-violet-600 shadow-violet-600/10 hover:shadow-violet-600/20'
+            : 'bg-gradient-to-r from-jade-600 to-jade-500 hover:from-jade-700 hover:to-jade-600 shadow-jade-600/10 hover:shadow-jade-600/20'"
+        >
           <svg v-if="generando" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
             viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -303,8 +425,12 @@
             </path>
           </svg>
           <PlusIcon class="w-5 h-5" v-else />
-          <span>{{ generando ? 'Registrando y Generando PDF...' :
-            (formulario.es_formato_vacio ? 'Generar Oficio en Blanco' : 'Generar Oficio Digital') }}</span>
+          <span>
+            <template v-if="generando">Registrando y Generando PDF...</template>
+            <template v-else-if="formulario.tipo === 'Económico' && modoEconomico === 'masivo-blanco'">Generar {{ cantidadBlanco }} Oficio{{ cantidadBlanco !== 1 ? 's' : '' }} en Blanco</template>
+            <template v-else-if="formulario.es_formato_vacio">Generar Oficio en Blanco</template>
+            <template v-else>Generar Oficio Digital</template>
+          </span>
         </button>
       </form>
     </div>
@@ -323,8 +449,11 @@ import {
   InformationCircleIcon,
   Cog6ToothIcon,
   ArrowPathIcon,
-  PlusIcon
+  PlusIcon,
+  TrashIcon,
+  DocumentArrowUpIcon
 } from '@heroicons/vue/24/outline'
+import * as XLSX from 'xlsx'
 
 const router = useRouter()
 const generando = ref(false)
@@ -339,6 +468,100 @@ const formulario = ref({
 const economicoMeta = ref({
   nombre: ''
 })
+
+const modoEconomico = ref('individual') // 'individual' | 'masivo' | 'masivo-blanco'
+const listaNombresPegados = ref('')
+const nombresCargados = ref([])
+const cantidadBlanco = ref(10)
+
+const limpiarCargaMasiva = () => {
+  nombresCargados.value = []
+  listaNombresPegados.value = ''
+}
+
+const eliminarNombreCargado = (idx) => {
+  nombresCargados.value.splice(idx, 1)
+}
+
+const procesarNombresPegados = () => {
+  if (!listaNombresPegados.value.trim()) return
+  const lines = listaNombresPegados.value.split(/\r?\n/)
+  const uniqueNames = new Set(nombresCargados.value)
+  let count = 0
+  lines.forEach(line => {
+    const clean = line.trim().toUpperCase()
+    if (clean.length > 0) {
+      if (!uniqueNames.has(clean)) {
+        uniqueNames.add(clean)
+        count++
+      }
+    }
+  })
+  nombresCargados.value = Array.from(uniqueNames)
+  if (count > 0) {
+    showNotification(`Se agregaron ${count} nombres de la lista pegada.`, 'alert-success')
+  } else {
+    showNotification('No se agregaron nombres nuevos (ya existen o lista vacía).', 'alert-warning')
+  }
+  listaNombresPegados.value = '' // Limpiar el área de texto
+}
+
+const procesarArchivoMasivo = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const extension = file.name.split('.').pop().toLowerCase()
+  const reader = new FileReader()
+
+  if (extension === 'xlsx' || extension === 'xls') {
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        
+        const names = []
+        rows.forEach(row => {
+          if (row && row.length > 0) {
+            const firstCell = String(row[0] || '').trim().toUpperCase()
+            if (firstCell && firstCell !== 'NOMBRE' && firstCell !== 'NOMBRES') {
+              names.push(firstCell)
+            }
+          }
+        })
+
+        const uniqueNames = new Set([...nombresCargados.value, ...names])
+        nombresCargados.value = Array.from(uniqueNames)
+        showNotification(`${names.length} nombres leídos del Excel.`, 'alert-success')
+      } catch (err) {
+        showNotification('Error al leer el archivo Excel: ' + err.message, 'alert-error')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  } else if (extension === 'csv' || extension === 'txt') {
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result
+        const lines = text.split(/\r?\n/)
+        const names = lines
+          .map(line => line.trim().toUpperCase())
+          .filter(line => line.length > 0 && line !== 'NOMBRE' && line !== 'NOMBRES')
+        
+        const uniqueNames = new Set([...nombresCargados.value, ...names])
+        nombresCargados.value = Array.from(uniqueNames)
+        showNotification(`${names.length} nombres leídos del archivo.`, 'alert-success')
+      } catch (err) {
+        showNotification('Error al leer el archivo: ' + err.message, 'alert-error')
+      }
+    }
+    reader.readAsText(file)
+  } else {
+    showNotification('Formato de archivo no soportado. Use .xlsx, .xls, .csv o .txt', 'alert-warning')
+  }
+  event.target.value = ''
+}
 
 const especificoMeta = ref({
   nombre: '',
@@ -432,8 +655,375 @@ onMounted(async () => {
   actualizarPretextoDeporte()
 })
 
+// Generador de códigos de verificación por lotes para la carga masiva (eficiente en una sola consulta)
+const generarCodigosVerificacionLote = async (tipo, cantidad) => {
+  let prefijo = 'COD'
+  if (tipo === 'Económico') prefijo = 'ECO'
+  else if (tipo === 'Específico') prefijo = 'ESP'
+  else if (tipo === 'Invitación') prefijo = 'INV'
+  else if (tipo === 'Deportes') prefijo = 'DEP'
+
+  const anio = new Date().getFullYear()
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+  try {
+    const { data, error } = await supabase
+      .from('oficios')
+      .select('codigo_verificacion')
+      .like('codigo_verificacion', `${prefijo}${anio}-%`)
+
+    if (error) {
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        throw new Error('La columna "codigo_verificacion" no existe en la base de datos.')
+      }
+      throw error
+    }
+
+    const codigosExistentes = new Set(data?.map(d => d.codigo_verificacion) || [])
+    const codigosGenerados = []
+
+    for (let i = 0; i < cantidad; i++) {
+      let attempts = 0
+      let codigo = ''
+      while (attempts < 100) {
+        let sufijo = ''
+        for (let j = 0; j < 4; j++) {
+          sufijo += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        codigo = `${prefijo}${anio}-${sufijo}`
+        if (!codigosExistentes.has(codigo) && !codigosGenerados.includes(codigo)) {
+          break
+        }
+        attempts++
+      }
+      codigosGenerados.push(codigo)
+    }
+    return codigosGenerados
+  } catch (dbErr) {
+    console.error("Error al generar códigos de verificación en lote:", dbErr)
+    const fallbackCodes = []
+    for (let i = 0; i < cantidad; i++) {
+      let sufijo = ''
+      for (let j = 0; j < 4; j++) {
+        sufijo += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      fallbackCodes.push(`${prefijo}${anio}-${sufijo}`)
+    }
+    return fallbackCodes
+  }
+}
+
+const generarOficiosMasivos = async () => {
+  if (nombresCargados.value.length === 0) {
+    showNotification('Debe agregar al menos un nombre para la carga masiva.', 'alert-warning')
+    return
+  }
+
+  generando.value = true
+
+  try {
+    const creador = user.value?.email || 'Invitado'
+    const cantidad = nombresCargados.value.length
+
+    showNotification(`Generando códigos y registrando ${cantidad} oficios...`, 'alert-info')
+
+    // 1. Generar códigos de verificación en lote
+    const codigosVerificacion = await generarCodigosVerificacionLote('Económico', cantidad)
+
+    // 2. Preparar el lote de registros para Supabase
+    const payloads = nombresCargados.value.map((nombre, index) => ({
+      tipo: 'Económico',
+      es_formato_vacio: false,
+      tipo_emision: 'DIGITAL',
+      destinatario: nombre.trim().toUpperCase(),
+      asunto: 'OFICIO ECONÓMICO',
+      token_validacion: crypto.randomUUID(),
+      creado_por: creador,
+      estado: 'Emitido',
+      codigo_verificacion: codigosVerificacion[index]
+    }))
+
+    // 3. Insertar registros en Supabase en una sola consulta
+    const { data: records, error: insertError } = await supabase
+      .from('oficios')
+      .insert(payloads)
+      .select('id, correlativo, destinatario, creado_por, tipo, es_formato_vacio, tipo_emision, asunto, token_validacion, codigo_verificacion')
+
+    if (insertError) throw insertError
+    if (!records || records.length === 0) throw new Error('No se pudieron guardar los registros de oficios.')
+
+    showNotification(`Se registraron ${records.length} oficios. Generando PDF consolidado...`, 'alert-success')
+
+    // 4. Generar el PDF consolidado
+    const mergedPdf = await PDFDocument.create()
+    const plantillaUrl = '/plantillas/plantilla-oficio-economico.pdf'
+    
+    // Descargar la plantilla una sola vez para todo el lote
+    const response = await fetch(plantillaUrl)
+    if (!response.ok) {
+      throw new Error(`No se pudo descargar la plantilla base desde: ${plantillaUrl}`)
+    }
+    const plantillaBytes = await response.arrayBuffer()
+
+    // Procesar cada oficio insertado
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i]
+      
+      const correlativo = record.correlativo
+      const codigoVisible = `OF-2026-${String(correlativo).padStart(6, '0')}-HB`
+      const validationUrl = `${window.location.origin}/validar?codigo=${record.codigo_verificacion}&token=${record.token_validacion}`
+      const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 180 })
+
+      const base64Data = qrDataUrl.split(',')[1]
+      const qrBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+
+      const tempDoc = await PDFDocument.load(plantillaBytes)
+      const firstPage = tempDoc.getPages()[0]
+      const qrImage = await tempDoc.embedPng(qrBytes)
+
+      const fontBold = await tempDoc.embedFont(StandardFonts.HelveticaBold)
+      const fontRegular = await tempDoc.embedFont(StandardFonts.Helvetica)
+
+      const qrX = ajustesCoords.value.qr.x
+      const qrY = ajustesCoords.value.qr.y
+      const qrSize = ajustesCoords.value.qr.size
+
+      firstPage.drawImage(qrImage, {
+        x: qrX,
+        y: qrY,
+        width: qrSize,
+        height: qrSize,
+      })
+
+      const msgY1 = qrY - 10
+      const msgY2 = qrY - 17
+      const msgY3 = qrY - 24
+
+      firstPage.drawText("Escanee el código QR o", { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      firstPage.drawText("haga clic aquí", { x: qrX - 8, y: msgY2, size: 5.5, font: fontBold, color: rgb(0, 0.4, 0.8) })
+      firstPage.drawLine({
+        start: { x: qrX - 8, y: msgY2 - 1.2 },
+        end: { x: qrX + 28, y: msgY2 - 1.2 },
+        thickness: 0.4,
+        color: rgb(0, 0.4, 0.8)
+      })
+      firstPage.drawText(" para verificar", { x: qrX + 28, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      firstPage.drawText("la autenticidad de este oficio.", { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+
+      const linkAnnotation = tempDoc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [qrX - 10, msgY2 - 3, qrX + 30, msgY2 + 6],
+        Border: [0, 0, 0],
+        A: {
+          Type: 'Action',
+          S: 'URI',
+          URI: PDFString.of(validationUrl),
+        },
+      })
+
+      const linkAnnotationRef = tempDoc.context.register(linkAnnotation)
+      const annots = firstPage.node.lookup(PDFName.of('Annots'), PDFArray) || tempDoc.context.obj([])
+      annots.push(linkAnnotationRef)
+      firstPage.node.set(PDFName.of('Annots'), annots)
+
+      firstPage.drawText(codigoVisible, {
+        x: ajustesCoords.value.correlativo.x,
+        y: ajustesCoords.value.correlativo.y,
+        size: ajustesCoords.value.correlativo.size,
+        font: fontBold,
+      })
+
+      if (ajustesCoords.value.codigoVerificacion) {
+        const cvX = ajustesCoords.value.codigoVerificacion.x
+        const cvY = ajustesCoords.value.codigoVerificacion.y
+        const cvSize = ajustesCoords.value.codigoVerificacion.size
+
+        firstPage.drawText("Código de verificación: ", { x: cvX, y: cvY, size: cvSize, font: fontRegular, color: rgb(0.3, 0.3, 0.3) })
+        const labelWidth = fontRegular.widthOfTextAtSize("Código de verificación: ", cvSize)
+        firstPage.drawText(record.codigo_verificacion, { x: cvX + labelWidth, y: cvY, size: cvSize, font: fontBold, color: rgb(0.1, 0.1, 0.1) })
+      }
+
+      firstPage.drawText(record.destinatario.toUpperCase(), {
+        x: ajustesCoords.value.destinatario.x,
+        y: ajustesCoords.value.destinatario.y,
+        size: 10,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1)
+      })
+
+      const tempBytes = await tempDoc.save()
+      const loadedDoc = await PDFDocument.load(tempBytes)
+      const copiedPages = await mergedPdf.copyPages(loadedDoc, [0])
+      mergedPdf.addPage(copiedPages[0])
+    }
+
+    const mergedBytes = await mergedPdf.save()
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' })
+    const downloadUrl = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `OFICIOS_ECONOMICOS_LOTE_${new Date().toISOString().substring(0, 10)}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+
+    showNotification(`PDF consolidado de ${records.length} oficios descargado.`, 'alert-success')
+    router.push('/dashboard')
+  } catch (err) {
+    showNotification('Error en generación masiva: ' + err.message, 'alert-error')
+  } finally {
+    generando.value = false
+  }
+}
+
+const generarOficiosMasivoEnBlanco = async () => {
+  const cantidad = Number(cantidadBlanco.value)
+  if (!cantidad || cantidad < 1 || cantidad > 500) {
+    showNotification('La cantidad debe estar entre 1 y 500 oficios.', 'alert-warning')
+    return
+  }
+
+  generando.value = true
+
+  try {
+    const creador = user.value?.email || 'Invitado'
+
+    showNotification(`Generando códigos y registrando ${cantidad} oficios en blanco...`, 'alert-info')
+
+    // 1. Generar códigos de verificación únicos en lote
+    const codigosVerificacion = await generarCodigosVerificacionLote('Económico', cantidad)
+
+    // 2. Preparar payloads para Supabase
+    const payloads = Array.from({ length: cantidad }, (_, index) => ({
+      tipo: 'Económico',
+      es_formato_vacio: true,
+      tipo_emision: 'BLANCO',
+      destinatario: 'POR LLENAR A MANO',
+      asunto: 'POR LLENAR A MANO',
+      token_validacion: crypto.randomUUID(),
+      creado_por: creador,
+      estado: 'Emitido',
+      codigo_verificacion: codigosVerificacion[index]
+    }))
+
+    // 3. Insertar registros en Supabase en batch
+    const { data: records, error: insertError } = await supabase
+      .from('oficios')
+      .insert(payloads)
+      .select('id, correlativo, token_validacion, codigo_verificacion')
+
+    if (insertError) throw insertError
+    if (!records || records.length === 0) throw new Error('No se pudieron guardar los registros de oficios en blanco.')
+
+    showNotification(`Se registraron ${records.length} oficios. Generando PDF consolidado en blanco...`, 'alert-success')
+
+    // 4. Generar PDF consolidado en blanco
+    const mergedPdf = await PDFDocument.create()
+    const plantillaUrl = '/plantillas/plantilla-oficio-economico.pdf'
+
+    const response = await fetch(plantillaUrl)
+    if (!response.ok) {
+      throw new Error(`No se pudo descargar la plantilla base desde: ${plantillaUrl}`)
+    }
+    const plantillaBytes = await response.arrayBuffer()
+
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i]
+
+      const correlativo = record.correlativo
+      const codigoVisible = `OF-2026-${String(correlativo).padStart(6, '0')}-HB`
+      const validationUrl = `${window.location.origin}/validar?codigo=${record.codigo_verificacion}&token=${record.token_validacion}`
+      const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 180 })
+
+      const base64Data = qrDataUrl.split(',')[1]
+      const qrBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+
+      const tempDoc = await PDFDocument.load(plantillaBytes)
+      const firstPage = tempDoc.getPages()[0]
+      const qrImage = await tempDoc.embedPng(qrBytes)
+
+      const fontBold = await tempDoc.embedFont(StandardFonts.HelveticaBold)
+      const fontRegular = await tempDoc.embedFont(StandardFonts.Helvetica)
+
+      const qrX = ajustesCoords.value.qr.x
+      const qrY = ajustesCoords.value.qr.y
+      const qrSize = ajustesCoords.value.qr.size
+
+      // Dibujar QR
+      firstPage.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize })
+
+      // Texto debajo del QR (modo BLANCO: sin link clicable)
+      const msgY1 = qrY - 10
+      const msgY2 = qrY - 17
+      const msgY3 = qrY - 24
+      firstPage.drawText('Escanee el código QR para', { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      firstPage.drawText('verificar la autenticidad', { x: qrX - 8, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      firstPage.drawText('de este oficio.', { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+
+      // Correlativo
+      firstPage.drawText(codigoVisible, {
+        x: ajustesCoords.value.correlativo.x,
+        y: ajustesCoords.value.correlativo.y,
+        size: ajustesCoords.value.correlativo.size,
+        font: fontBold,
+      })
+
+      // Código de verificación en el pie
+      if (ajustesCoords.value.codigoVerificacion) {
+        const cvX = ajustesCoords.value.codigoVerificacion.x
+        const cvY = ajustesCoords.value.codigoVerificacion.y
+        const cvSize = ajustesCoords.value.codigoVerificacion.size
+        firstPage.drawText('Código de verificación: ', { x: cvX, y: cvY, size: cvSize, font: fontRegular, color: rgb(0.3, 0.3, 0.3) })
+        const labelWidth = fontRegular.widthOfTextAtSize('Código de verificación: ', cvSize)
+        firstPage.drawText(record.codigo_verificacion, { x: cvX + labelWidth, y: cvY, size: cvSize, font: fontBold, color: rgb(0.1, 0.1, 0.1) })
+      }
+
+      // Sin nombre de destinatario — queda en blanco para llenado manual
+
+      const tempBytes = await tempDoc.save()
+      const loadedDoc = await PDFDocument.load(tempBytes)
+      const copiedPages = await mergedPdf.copyPages(loadedDoc, [0])
+      mergedPdf.addPage(copiedPages[0])
+    }
+
+    const mergedBytes = await mergedPdf.save()
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' })
+    const downloadUrl = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `OFICIOS_ECONOMICOS_BLANCO_${cantidad}_${new Date().toISOString().substring(0, 10)}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+
+    showNotification(`PDF con ${records.length} oficios en blanco descargado exitosamente.`, 'alert-success')
+    router.push('/dashboard')
+  } catch (err) {
+    showNotification('Error al generar PDF en blanco masivo: ' + err.message, 'alert-error')
+  } finally {
+    generando.value = false
+  }
+}
+
 const generarOficio = async () => {
   if (generando.value) return
+
+  // Modo En Blanco Masivo
+  if (formulario.value.tipo === 'Económico' && modoEconomico.value === 'masivo-blanco') {
+    await generarOficiosMasivoEnBlanco()
+    return
+  }
+
+  if (formulario.value.tipo === 'Económico' && modoEconomico.value === 'masivo' && !formulario.value.es_formato_vacio) {
+    await generarOficiosMasivos()
+    return
+  }
+
   generando.value = true
 
   try {

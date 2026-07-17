@@ -108,6 +108,7 @@
           <!-- Cabecera de Tarjeta -->
           <div class="flex items-start justify-between border-b border-slate-100 pb-2">
             <div class="flex items-center gap-2">
+              <input type="checkbox" :value="oficio" v-model="seleccionados" class="rounded border-slate-200 text-jade-600 focus:ring-jade-500/20 w-4 h-4 cursor-pointer align-middle mr-1" />
               <span class="w-5.5 h-5.5 rounded-lg bg-slate-50 text-slate-500 font-black text-[10px] flex items-center justify-center font-outfit border border-slate-100">
                 {{ index + 1 }}
               </span>
@@ -203,6 +204,9 @@
           <table class="table-auto w-full text-left text-xs">
             <thead class="bg-slate-50 text-slate-500 uppercase font-black border-b border-slate-100">
               <tr>
+                <th class="px-4 py-4 text-center w-10">
+                  <input type="checkbox" :checked="todosSeleccionados" @change="toggleSeleccionarTodos" class="rounded border-slate-200 text-jade-600 focus:ring-jade-500/20 w-4 h-4 cursor-pointer align-middle" />
+                </th>
                 <th class="px-4 py-4 text-center w-12">N°</th>
                 <th class="px-6 py-4">Código de Oficio</th>
                 <th class="px-6 py-4">Emisión</th>
@@ -225,6 +229,10 @@
                 }"
                 class="transition-colors font-bold text-slate-700"
               >
+                <!-- Checkbox de Selección -->
+                <td class="px-4 py-3 text-center w-10">
+                  <input type="checkbox" :value="oficio" v-model="seleccionados" class="rounded border-slate-200 text-jade-600 focus:ring-jade-500/20 w-4 h-4 cursor-pointer align-middle" />
+                </td>
                 <!-- Número de Fila -->
                 <td class="px-4 py-3 text-center text-slate-400 font-bold font-outfit">
                   {{ index + 1 }}
@@ -505,6 +513,41 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Barra de Acciones Masivas Flotante (Premium glassmorphism / dark mode) -->
+    <Transition name="fade">
+      <div v-if="seleccionados.length > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-xl px-5 py-3 flex items-center justify-between gap-4 w-[92%] max-w-md border border-slate-800 animate-in slide-in-from-bottom duration-300">
+        <div class="flex flex-col">
+          <span class="text-xs font-black uppercase tracking-wider text-slate-200">Seleccionados</span>
+          <span class="text-[10px] text-jade-400 font-bold font-outfit mt-0.5">{{ seleccionados.length }} documento(s)</span>
+        </div>
+        <div class="flex gap-2">
+          <button 
+            @click="limpiarSeleccion" 
+            class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition duration-150 active:scale-95"
+          >
+            Deseleccionar
+          </button>
+          <button 
+            @click="descargarSeleccionadosConsolidado" 
+            :disabled="descargandoConsolidado"
+            class="px-4 py-2 bg-jade-600 hover:bg-jade-500 disabled:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition duration-150 active:scale-95 flex items-center gap-1.5 min-h-[34px]"
+          >
+            <span v-if="descargandoConsolidado" class="flex items-center gap-1.5">
+              <svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>{{ progresoConsolidado.actual }}/{{ progresoConsolidado.total }}</span>
+            </span>
+            <span v-else class="flex items-center gap-1.5">
+              <ArrowDownTrayIcon class="w-4 h-4" />
+              <span>PDF Único</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -537,6 +580,250 @@ const generandoPdfId = ref(null)
 // Estado para la previsualización del PDF en Modal
 const previewPdfUrl = ref(null)
 const previewPdfCodigo = ref('')
+
+// Variables para la selección múltiple y consolidación
+const seleccionados = ref([])
+const descargandoConsolidado = ref(false)
+const progresoConsolidado = ref({ actual: 0, total: 0 })
+
+const todosSeleccionados = computed(() => {
+  return oficiosFiltrados.value.length > 0 && seleccionados.value.length === oficiosFiltrados.value.length
+})
+
+const toggleSeleccionarTodos = () => {
+  if (todosSeleccionados.value) {
+    seleccionados.value = []
+  } else {
+    seleccionados.value = [...oficiosFiltrados.value]
+  }
+}
+
+const limpiarSeleccion = () => {
+  seleccionados.value = []
+}
+
+// Limpiar la selección si cambian los filtros
+watch(filtros, () => {
+  seleccionados.value = []
+}, { deep: true })
+
+const descargarSeleccionadosConsolidado = async () => {
+  if (seleccionados.value.length === 0) return
+  descargandoConsolidado.value = true
+  progresoConsolidado.value = { actual: 0, total: seleccionados.value.length }
+
+  try {
+    const mergedPdf = await PDFDocument.create()
+    const templatesCache = {}
+
+    // Ordenar los oficios seleccionados por correlativo ascendente
+    const oficiosAProcesar = [...seleccionados.value].sort((a, b) => a.correlativo - b.correlativo)
+
+    for (let i = 0; i < oficiosAProcesar.length; i++) {
+      const oficio = oficiosAProcesar[i]
+      progresoConsolidado.value.actual = i + 1
+
+      let plantillaUrl = ''
+      if (oficio.tipo === 'Económico') {
+        plantillaUrl = '/plantillas/plantilla-oficio-economico.pdf'
+      } else if (oficio.tipo === 'Específico') {
+        plantillaUrl = '/plantillas/plantilla-oficio-especifico.pdf'
+      } else if (oficio.tipo === 'Invitación') {
+        plantillaUrl = '/plantillas/plantilla-oficio-invitacion.pdf'
+      } else if (oficio.tipo === 'Deportes') {
+        const disciplina = obtenerDisciplinaDeAsunto(oficio.asunto)
+        if (disciplina === 'Fulbito Femenino') {
+          plantillaUrl = '/plantillas/tipo-deporte/plantilla-oficio-deporte-fulbito-femenino.pdf'
+        } else if (disciplina === 'Fulbito Máster') {
+          plantillaUrl = '/plantillas/tipo-deporte/plantilla-oficio-deporte-fulbito-master.pdf'
+        } else if (disciplina === 'Fútbol Libre') {
+          plantillaUrl = '/plantillas/tipo-deporte/plantilla-oficio-deporte-futbol-libre.pdf'
+        } else if (disciplina === 'Vóley Mixto') {
+          plantillaUrl = '/plantillas/tipo-deporte/plantilla-oficio-deporte-voley-mixto.pdf'
+        }
+      }
+
+      if (!plantillaUrl) continue
+
+      let plantillaBytes
+      if (templatesCache[plantillaUrl]) {
+        plantillaBytes = templatesCache[plantillaUrl]
+      } else {
+        const response = await fetch(plantillaUrl)
+        if (!response.ok) throw new Error(`No se pudo descargar la plantilla base desde: ${plantillaUrl}`)
+        plantillaBytes = await response.arrayBuffer()
+        templatesCache[plantillaUrl] = plantillaBytes
+      }
+
+      const tempDoc = await PDFDocument.load(plantillaBytes)
+      const firstPage = tempDoc.getPages()[0]
+
+      const codigoVisible = obtenerCodigoVisible(oficio.correlativo)
+      const codigoVerificacion = oficio.codigo_verificacion || codigoVisible
+      const validationUrl = `${window.location.origin}/validar?codigo=${codigoVerificacion}&token=${oficio.token_validacion}`
+      const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 180 })
+
+      const base64Data = qrDataUrl.split(',')[1]
+      const qrBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+      const qrImage = await tempDoc.embedPng(qrBytes)
+
+      const fontBold = await tempDoc.embedFont(StandardFonts.HelveticaBold)
+      const fontRegular = await tempDoc.embedFont(StandardFonts.Helvetica)
+
+      const qrX = coordsPredeterminadas.qr.x
+      const qrY = coordsPredeterminadas.qr.y
+      const qrSize = coordsPredeterminadas.qr.size
+
+      firstPage.drawImage(qrImage, {
+        x: qrX,
+        y: qrY,
+        width: qrSize,
+        height: qrSize,
+      })
+
+      const msgY1 = qrY - 10
+      const msgY2 = qrY - 17
+      const msgY3 = qrY - 24
+
+      if (oficio.tipo_emision === 'DIGITAL') {
+        firstPage.drawText("Escanee el código QR o", { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+        firstPage.drawText("haga clic aquí", { x: qrX - 8, y: msgY2, size: 5.5, font: fontBold, color: rgb(0, 0.4, 0.8) })
+        firstPage.drawLine({
+          start: { x: qrX - 8, y: msgY2 - 1.2 },
+          end: { x: qrX + 28, y: msgY2 - 1.2 },
+          thickness: 0.4,
+          color: rgb(0, 0.4, 0.8)
+        })
+        firstPage.drawText(" para verificar", { x: qrX + 28, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+        firstPage.drawText("la autenticidad de este oficio.", { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+
+        const linkAnnotation = tempDoc.context.obj({
+          Type: 'Annot',
+          Subtype: 'Link',
+          Rect: [qrX - 10, msgY2 - 3, qrX + 30, msgY2 + 6],
+          Border: [0, 0, 0],
+          A: {
+            Type: 'Action',
+            S: 'URI',
+            URI: PDFString.of(validationUrl),
+          },
+        })
+
+        const linkAnnotationRef = tempDoc.context.register(linkAnnotation)
+        const annots = firstPage.node.lookup(PDFName.of('Annots'), PDFArray) || tempDoc.context.obj([])
+        annots.push(linkAnnotationRef)
+        firstPage.node.set(PDFName.of('Annots'), annots)
+      } else {
+        firstPage.drawText("Escanee el código QR para", { x: qrX - 8, y: msgY1, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+        firstPage.drawText("verificar la autenticidad", { x: qrX - 8, y: msgY2, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+        firstPage.drawText("de este oficio.", { x: qrX - 8, y: msgY3, size: 5.5, font: fontRegular, color: rgb(0.4, 0.4, 0.4) })
+      }
+
+      const correlativoX = coordsPredeterminadas.correlativo.x
+      const correlativoY = coordsPredeterminadas.correlativo.y
+      const correlativoSize = coordsPredeterminadas.correlativo.size
+
+      firstPage.drawText(codigoVisible, {
+        x: correlativoX,
+        y: correlativoY,
+        size: correlativoSize,
+        font: fontBold,
+      })
+
+      if (coordsPredeterminadas.codigoVerificacion) {
+        const cvX = coordsPredeterminadas.codigoVerificacion.x
+        const cvY = coordsPredeterminadas.codigoVerificacion.y
+        const cvSize = coordsPredeterminadas.codigoVerificacion.size
+
+        firstPage.drawText("Código de verificación: ", { x: cvX, y: cvY, size: cvSize, font: fontRegular, color: rgb(0.3, 0.3, 0.3) })
+        const labelWidth = fontRegular.widthOfTextAtSize("Código de verificación: ", cvSize)
+        firstPage.drawText(codigoVerificacion, { x: cvX + labelWidth, y: cvY, size: cvSize, font: fontBold, color: rgb(0.1, 0.1, 0.1) })
+      }
+
+      if (oficio.tipo_emision === 'DIGITAL') {
+        if (oficio.tipo === 'Económico') {
+          firstPage.drawText(oficio.destinatario.toUpperCase(), {
+            x: coordsPredeterminadas.destinatario.x,
+            y: coordsPredeterminadas.destinatario.y,
+            size: 10,
+            font: fontBold,
+            color: rgb(0.1, 0.1, 0.1)
+          })
+        } else if (oficio.tipo === 'Específico') {
+          firstPage.drawText(oficio.destinatario.toUpperCase(), {
+            x: coordsPredeterminadas.destinatario.x,
+            y: coordsPredeterminadas.destinatario.y,
+            size: 10,
+            font: fontBold,
+            color: rgb(0.1, 0.1, 0.1)
+          })
+          firstPage.drawText(oficio.asunto, { x: 120, y: 545, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1) })
+          const asuntoTextoRecortado = splitTextIntoLines(oficio.asunto, 75)
+          let currentY = 425
+          for (const line of asuntoTextoRecortado) {
+            if (currentY < 150) break
+            firstPage.drawText(line, { x: 80, y: currentY, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1) })
+            currentY -= 14
+          }
+        } else if (oficio.tipo === 'Invitación') {
+          firstPage.drawText(oficio.destinatario.toUpperCase(), {
+            x: coordsPredeterminadas.destinatario.x,
+            y: coordsPredeterminadas.destinatario.y,
+            size: 10,
+            font: fontBold,
+            color: rgb(0.1, 0.1, 0.1)
+          })
+          const motivoTextoRecortado = splitTextIntoLines(oficio.asunto, 80)
+          let currentY = 460
+          for (const line of motivoTextoRecortado) {
+            if (currentY < 150) break
+            firstPage.drawText(line, { x: 80, y: currentY, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1) })
+            currentY -= 14
+          }
+        } else if (oficio.tipo === 'Deportes') {
+          firstPage.drawText(oficio.destinatario.toUpperCase(), {
+            x: coordsPredeterminadas.destinatario.x,
+            y: coordsPredeterminadas.destinatario.y,
+            size: 10,
+            font: fontBold,
+            color: rgb(0.1, 0.1, 0.1)
+          })
+          const descTextoRecortado = splitTextIntoLines(oficio.asunto, 80)
+          let currentY = 460
+          for (const line of descTextoRecortado) {
+            if (currentY < 150) break
+            firstPage.drawText(line, { x: 80, y: currentY, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1) })
+            currentY -= 14
+          }
+        }
+      }
+
+      const tempBytes = await tempDoc.save()
+      const loadedDoc = await PDFDocument.load(tempBytes)
+      const copiedPages = await mergedPdf.copyPages(loadedDoc, [0])
+      mergedPdf.addPage(copiedPages[0])
+    }
+
+    const mergedBytes = await mergedPdf.save()
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' })
+    const pdfUrl = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = pdfUrl
+    link.download = `OFICIOS_CONSOLIDADOS_${new Date().toISOString().substring(0, 10)}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 100)
+
+    showNotification(`Se descargó el archivo con ${oficiosAProcesar.length} oficios unificados.`, 'alert-success')
+    seleccionados.value = []
+  } catch (err) {
+    showNotification('Error al unificar PDFs: ' + err.message, 'alert-error')
+  } finally {
+    descargandoConsolidado.value = false
+  }
+}
 
 const cerrarPreview = () => {
   if (previewPdfUrl.value) {
