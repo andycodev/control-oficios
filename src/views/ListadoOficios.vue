@@ -602,10 +602,6 @@ const limpiarSeleccion = () => {
   seleccionados.value = []
 }
 
-// Limpiar la selección si cambian los filtros
-watch(filtros, () => {
-  seleccionados.value = []
-}, { deep: true })
 
 const descargarSeleccionadosConsolidado = async () => {
   if (seleccionados.value.length === 0) return
@@ -777,7 +773,7 @@ const descargarSeleccionadosConsolidado = async () => {
 
     const link = document.createElement('a')
     link.href = pdfUrl
-    link.download = `OFICIOS_CONSOLIDADOS_${new Date().toISOString().substring(0, 10)}.pdf`
+    link.download = `Oficios Consolidados - ${obtenerFechaLocalHoy()}.pdf`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -804,7 +800,7 @@ const descargarDesdePreview = () => {
   if (!previewPdfUrl.value) return
   const link = document.createElement('a')
   link.href = previewPdfUrl.value
-  link.download = `${previewPdfCodigo.value}.pdf`
+  link.download = `${previewPdfCodigo.value} - ${obtenerFechaLocalHoy()}.pdf`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -882,6 +878,20 @@ const filtros = ref({
   usuario: '',
   estado: ''
 })
+
+// Retorna la fecha local actual en formato YYYY-MM-DD (evita el desfase UTC de toISOString())
+const obtenerFechaLocalHoy = () => {
+  const ahora = new Date()
+  const y = ahora.getFullYear()
+  const m = String(ahora.getMonth() + 1).padStart(2, '0')
+  const d = String(ahora.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+// Limpiar la selección si cambian los filtros (declarado aquí, después de filtros)
+watch(filtros, () => {
+  seleccionados.value = []
+}, { deep: true })
 
 const limpiarFiltros = () => {
   filtros.value = {
@@ -988,7 +998,11 @@ const confirmarAnulacion = async () => {
 
 const validarOficio = (oficio) => {
   const codigo = oficio.codigo_verificacion || obtenerCodigoVisible(oficio.correlativo)
-  window.open(`/validar?codigo=${codigo}`, '_blank')
+  const token = oficio.token_validacion || ''
+  const url = token
+    ? `/validar?codigo=${codigo}&token=${token}`
+    : `/validar?codigo=${codigo}`
+  window.open(url, '_blank')
 }
 
 // Coordenadas predeterminadas calibradas para ubicar el QR en la parte superior derecha (igual que en NuevoOficio.vue)
@@ -1226,7 +1240,7 @@ const previsualizarYDescargarPDF = async (oficio, action) => {
     } else {
       const link = document.createElement('a')
       link.href = pdfUrl
-      link.download = `${codigoVisible}.pdf`
+      link.download = `Oficio ${oficio.tipo} - ${obtenerFechaLocalHoy()}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

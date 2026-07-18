@@ -457,6 +457,15 @@ import * as XLSX from 'xlsx'
 
 const router = useRouter()
 const generando = ref(false)
+
+// Retorna la fecha local actual en formato YYYY-MM-DD (evita el desfase UTC de toISOString())
+const obtenerFechaLocalHoy = () => {
+  const ahora = new Date()
+  const y = ahora.getFullYear()
+  const m = String(ahora.getMonth() + 1).padStart(2, '0')
+  const d = String(ahora.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 const user = ref(null)
 const mostrarCoordenadas = ref(false)
 
@@ -837,7 +846,7 @@ const generarOficiosMasivos = async () => {
 
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.download = `OFICIOS_ECONOMICOS_LOTE_${new Date().toISOString().substring(0, 10)}.pdf`
+    link.download = `Oficio Económico Lote - ${obtenerFechaLocalHoy()}.pdf`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -966,7 +975,7 @@ const generarOficiosMasivoEnBlanco = async () => {
 
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.download = `OFICIOS_ECONOMICOS_BLANCO_${cantidad}_${new Date().toISOString().substring(0, 10)}.pdf`
+    link.download = `Oficio Económico Blanco (${cantidad}) - ${obtenerFechaLocalHoy()}.pdf`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -1265,7 +1274,7 @@ const descargarYTimbrarPDF = async (correlativo, token, payload) => {
 
     const link = document.createElement('a')
     link.href = downloadUrl
-    link.download = `${codigoVisible}.pdf`
+    link.download = `Oficio ${payload.tipo} - ${obtenerFechaLocalHoy()}.pdf`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
