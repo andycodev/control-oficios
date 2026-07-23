@@ -60,7 +60,12 @@
                 class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-sm font-bold text-slate-700 outline-none transition duration-200 hover:border-slate-200 focus:bg-white focus:ring-4 focus:ring-slate-500/10 focus:border-slate-400 uppercase text-center tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-normal"
                 @keyup.enter="buscarDocumento()" />
               <button @click="buscarDocumento()" :disabled="!codigoEntrada || buscando"
-                class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition duration-200 disabled:opacity-50 flex justify-center items-center gap-2 shadow-lg shadow-slate-800/20">
+                :class="[
+                  'w-full font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-100',
+                  codigoEntrada && !buscando
+                    ? 'bg-slate-800 hover:bg-slate-900 active:bg-slate-950 active:scale-[0.98] text-white shadow-xl shadow-slate-800/20 hover:shadow-slate-800/40'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                ]">
                 <MagnifyingGlassIcon class="w-5 h-5" />
                 Validar Documento
               </button>
