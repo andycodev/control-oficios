@@ -1,269 +1,265 @@
 <template>
-  <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 relative overflow-hidden flex flex-col justify-between font-sans">
-    <!-- Círculos de fondo -->
-    <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-jade-100/30 blur-3xl"></div>
-    <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-dorado-100/30 blur-3xl"></div>
+  <div class="min-h-screen bg-slate-50 flex flex-col font-sans relative overflow-hidden">
+    
+    <!-- Background decorations -->
+    <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-slate-200/50 blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-full bg-white/40 blur-3xl pointer-events-none"></div>
 
-    <div class="w-full max-w-xl mx-auto bg-white border border-slate-100 rounded-3xl shadow-2xl p-6 md:p-10 relative z-10 my-auto transition-all duration-300 hover:shadow-jade-100/10">
+    <!-- Main Container -->
+    <div class="flex-grow flex items-center justify-center p-4 sm:p-6 md:py-12 relative z-10 w-full max-w-2xl mx-auto">
       
-      <!-- Encabezado -->
-      <div class="text-center mb-10">
-        <span class="px-4 py-1.5 bg-jade-50 border border-jade-100 text-jade-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-          Portal Ciudadano de Validación
-        </span>
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight mt-4 font-outfit uppercase">Verificador de Documentos</h1>
-        <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1.5">Consulte la validez oficial de los oficios institucionales emitidos</p>
-      </div>
-
-      <!-- Buscador Manual por Código de Oficio (Sin campos tediosos de token) -->
-      <div class="space-y-4 mb-10 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-        <div class="space-y-4">
-          <div class="space-y-1.5">
-            <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Código de Oficio</label>
-            <input 
-              v-model="codigoEntrada" 
-              type="text" 
-              placeholder="Ej. COD2026-A7K9" 
-              class="w-full px-5 py-4 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none transition duration-200 hover:border-slate-300 focus:ring-4 focus:ring-jade-500/10 focus:border-jade-500 uppercase"
-              @keyup.enter="buscarDocumento()"
+      <div class="w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden transition-all duration-500 border border-slate-100 p-6 sm:p-10 md:p-12">
+        
+        <!-- HEADER INSTITUCIONAL -->
+        <div class="flex flex-col items-center text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+          
+          <!-- 1. Imagen de la Virgen -->
+          <div class="relative mb-6 group">
+            <div class="absolute inset-0 bg-amber-200 rounded-[2rem] blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+            <img 
+              src="/images/virgen-de-angosto.jpg" 
+              alt="Virgen de Angosto" 
+              class="relative w-36 h-48 sm:w-44 sm:h-56 object-cover object-top rounded-[2rem] shadow-xl ring-4 ring-white border border-slate-100 transition-transform duration-500 group-hover:scale-[1.02]"
             />
           </div>
-
-          <button 
-            @click="buscarDocumento()" 
-            :disabled="buscando || !codigoEntrada"
-            class="w-full bg-jade-600 hover:bg-jade-700 text-white font-extrabold text-xs uppercase tracking-widest py-3.5 rounded-xl transition duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none min-h-[48px] flex items-center justify-center gap-2"
-          >
-            <ShieldCheckIcon class="w-5 h-5" />
-            <span>Validar Documento</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Spinner de Búsqueda -->
-      <div v-if="buscando" class="flex flex-col items-center py-12">
-        <svg class="animate-spin h-10 w-10 text-jade-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Consultando en el servidor seguro...</p>
-      </div>
-
-      <!-- Resultados -->
-      <Transition name="fade" mode="out-in">
-        <div v-if="resultadoObtenido && !buscando">
           
-          <!-- CASO 1: No encontrado, no auténtico o alterado -->
-          <div v-if="documento === null" class="bg-red-50/50 border border-red-100 rounded-3xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto border border-red-200 shadow-sm">
-              <XCircleIcon class="w-9 h-9" />
-            </div>
-            <h2 class="text-lg font-black text-red-800 uppercase tracking-tight font-outfit">Documento no válido</h2>
-            <p class="text-xs text-red-600 font-extrabold leading-relaxed max-w-sm mx-auto">
-              Este documento no fue emitido por el sistema oficial o ha sido alterado. Por lo tanto, no puede considerarse un oficio válido.
-            </p>
+          <!-- 2. Nombre del comité -->
+          <div class="space-y-2">
+            <h1 class="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-widest leading-relaxed">
+              Comité de Fiesta Patronal 2026
+            </h1>
+            <h2 class="text-xl sm:text-3xl font-outfit font-black text-slate-800 uppercase tracking-tight text-balance leading-tight">
+              "Nuestra Señora Virgen de Angosto"
+            </h2>
+            <h3 class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              Huaca Blanca - Chongoyape
+            </h3>
           </div>
-
-          <!-- CASO 2: Documento Anulado -->
-          <div v-else-if="documento.estado === 'Anulado'" class="bg-red-50/50 border border-red-100 rounded-3xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto border border-red-200 shadow-sm">
-              <ExclamationTriangleIcon class="w-9 h-9" />
-            </div>
-            <h2 class="text-lg font-black text-red-800 uppercase tracking-tight font-outfit">Documento Anulado</h2>
-            <p class="text-xs text-red-600 font-semibold leading-relaxed max-w-sm mx-auto font-sans">
-              Este oficio ({{ obtenerCodigoVisible(documento.correlativo) }}) ha sido anulado formalmente en nuestro sistema. Ya no cuenta con validez oficial ni representación institucional.
-            </p>
-            <div class="pt-4 border-t border-red-200 flex flex-col gap-2 text-left text-xs font-bold text-slate-700">
-              <div class="flex justify-between border-b border-red-100/50 pb-2">
-                <span class="text-slate-400">Código de Oficio:</span>
-                <span>{{ obtenerCodigoVisible(documento.correlativo) }}</span>
-              </div>
-              <div v-if="documento.codigo_verificacion" class="flex justify-between border-b border-red-100/50 pb-2">
-                <span class="text-slate-400">Código de Verificación:</span>
-                <span class="text-red-700 font-extrabold uppercase font-outfit">{{ documento.codigo_verificacion }}</span>
-              </div>
-              <div class="flex justify-between border-b border-red-100/50 pb-2">
-                <span class="text-slate-400">Tipo de Documento:</span>
-                <span>{{ documento.tipo }}</span>
-              </div>
-              <div class="flex justify-between border-b border-red-100/50 pb-2">
-                <span class="text-slate-400">Destinatario original:</span>
-                <span class="text-right">{{ documento.destinatario }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-400">Fecha de Registro:</span>
-                <span>{{ formatearFecha(documento.creado_en) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- CASO 3: Formato Vacío (Llenado Manual / Blanco) -->
-          <div v-else-if="documento.es_formato_vacio" class="bg-blue-50/50 border border-blue-100 rounded-3xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto border border-blue-200 shadow-sm">
-              <PencilSquareIcon class="w-9 h-9" />
-            </div>
-            
-            <h2 class="text-lg font-black text-blue-800 uppercase tracking-tight font-outfit">Documento Válido - Llenado Manual</h2>
-            
-            <!-- Banner de Alerta para Registro Histórico -->
-            <div v-if="esRegistroHistorico" class="bg-amber-100/50 border border-amber-200 text-amber-800 rounded-2xl p-3 text-[10px] font-black text-center uppercase tracking-wide">
-              Registro Histórico (Migrado sin firma digital tokenizada)
-            </div>
-
-
-
-            <p class="text-xs text-blue-600 font-semibold leading-relaxed max-w-sm mx-auto">
-              El código consultado corresponde a una plantilla en blanco generada por el sistema para llenado manual. Se autorizó la redacción manuscrita del documento físico.
-            </p>
-            
-            <div class="bg-blue-100/30 border border-blue-200/30 rounded-2xl p-4 text-[10px] text-blue-800 font-bold leading-normal text-left flex items-start gap-2">
-              <InformationCircleIcon class="w-4 h-4 text-blue-800 flex-shrink-0 mt-0.5" />
-              <p><strong>Importante para el ciudadano:</strong> Para verificar la autenticidad total de este documento, asegúrese de que cuente con las firmas y sellos físicos autorizados del personal administrativo correspondiente.</p>
-            </div>
-
-            <div class="pt-4 border-t border-blue-200 flex flex-col gap-2.5 text-left text-xs font-bold text-slate-700">
-              <div class="flex justify-between border-b border-blue-100/50 pb-2">
-                <span class="text-slate-400">Código de Oficio (Correlativo):</span>
-                <span>{{ obtenerCodigoVisible(documento.correlativo) }}</span>
-              </div>
-              <div v-if="documento.codigo_verificacion" class="flex justify-between border-b border-blue-100/50 pb-2">
-                <span class="text-slate-400">Código de Verificación:</span>
-                <span class="text-blue-700 font-extrabold uppercase font-outfit">{{ documento.codigo_verificacion }}</span>
-              </div>
-              <div class="flex justify-between border-b border-blue-100/50 pb-2">
-                <span class="text-slate-400">Tipo de Formato:</span>
-                <span>{{ documento.tipo }}</span>
-              </div>
-              <div class="flex justify-between border-b border-blue-100/50 pb-2">
-                <span class="text-slate-400">Estado en Sistema:</span>
-                <span class="uppercase text-blue-700 font-extrabold">{{ documento.estado }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-slate-400">Fecha de Emisión:</span>
-                <span>{{ formatearFecha(documento.creado_en) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- CASO 4: Válido Digital (Página Profesional de Validación) -->
-          <div v-else class="bg-green-50/50 border border-green-100 rounded-3xl p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto border border-green-200 shadow-sm">
-              <CheckCircleIcon class="w-9 h-9" />
-            </div>
-            
-            <span class="px-3.5 py-1 bg-green-100 text-green-800 border border-green-200 rounded-full text-[10px] font-black uppercase tracking-widest">
-              Estado: Documento válido
-            </span>
-
-            <!-- Banner de Alerta para Registro Histórico -->
-            <div v-if="esRegistroHistorico" class="bg-amber-100/50 border border-amber-200 text-amber-800 rounded-2xl p-3 text-[10px] font-black text-center mt-3 uppercase tracking-wide">
-              Registro Histórico (Migrado sin firma digital tokenizada)
-            </div>
-
-
-
-            <p class="text-xs text-green-600 font-semibold leading-relaxed max-w-sm mx-auto mt-2">
-              El oficio consultado es auténtico y coincide con los registros digitales oficiales de la institución.
-            </p>
-
-            <div class="pt-4 border-t border-green-200 flex flex-col gap-2.5 text-left text-xs font-bold text-slate-700">
-              <!-- Código del oficio -->
-              <div class="flex justify-between border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Código de Oficio (Correlativo):</span>
-                <span>{{ obtenerCodigoVisible(documento.correlativo) }}</span>
-              </div>
-              <div v-if="documento.codigo_verificacion" class="flex justify-between border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Código de Verificación:</span>
-                <span class="text-jade-700 font-extrabold uppercase font-outfit">{{ documento.codigo_verificacion }}</span>
-              </div>
-              
-              <!-- Tipo de oficio -->
-              <div class="flex justify-between border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Tipo de Oficio:</span>
-                <span>{{ documento.tipo }}</span>
-              </div>
-              
-              <!-- Destinatario -->
-              <div class="flex flex-col border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Destinatario:</span>
-                <span class="text-slate-800 mt-0.5">{{ documento.destinatario }}</span>
-              </div>
-              
-              <!-- Detalles del Asunto -->
-              <div class="flex flex-col border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Detalles del Asunto:</span>
-                <span class="text-slate-800 mt-0.5 whitespace-pre-wrap">{{ documento.asunto }}</span>
-              </div>
-
-              <!-- Autoridad emisora -->
-              <div class="flex justify-between border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Autoridad Emisora:</span>
-                <span class="lowercase text-slate-600 text-[10px]">{{ documento.creado_por }}</span>
-              </div>
-              
-              <!-- Fecha de emisión -->
-              <div class="flex justify-between border-b border-green-100/50 pb-2">
-                <span class="text-slate-400">Fecha de Emisión:</span>
-                <span>{{ formatearFecha(documento.creado_en) }}</span>
-              </div>
-
-              <!-- Fecha y hora de validación -->
-              <div class="flex justify-between">
-                <span class="text-slate-400">Fecha y Hora de Validación:</span>
-                <span class="text-slate-800">{{ obtenerFechaHoraValidacion() }}</span>
-              </div>
-            </div>
-          </div>
-
         </div>
-      </Transition>
-      
-      <!-- Enlace para volver o iniciar sesión -->
-      <div class="text-center mt-10 pt-6 border-t border-slate-100">
-        <router-link 
-          to="/login" 
-          class="text-xs font-black text-jade-700 hover:text-jade-900 uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
-        >
-          <LockClosedIcon class="w-4 h-4 text-jade-700" />
-          <span>Acceder al Panel Administrativo</span>
-        </router-link>
+
+        <div class="w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-8"></div>
+
+        <!-- BÚSQUEDA MANUAL -->
+        <Transition name="fade" mode="out-in">
+          <div v-if="!resultadoObtenido && !buscando" class="space-y-6 max-w-md mx-auto">
+            <div class="text-center">
+              <p class="text-sm text-slate-500 font-medium leading-relaxed">
+                Ingrese el código de verificación para comprobar la autenticidad del documento institucional.
+              </p>
+            </div>
+            <div class="space-y-4">
+              <input 
+                v-model="codigoEntrada" 
+                type="text" 
+                placeholder="Ej. ECO2026-A7K9" 
+                class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-sm font-bold text-slate-700 outline-none transition duration-200 hover:border-slate-200 focus:bg-white focus:ring-4 focus:ring-slate-500/10 focus:border-slate-400 uppercase text-center tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-normal"
+                @keyup.enter="buscarDocumento()"
+              />
+              <button 
+                @click="buscarDocumento()" 
+                :disabled="!codigoEntrada || buscando"
+                class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition duration-200 disabled:opacity-50 flex justify-center items-center gap-2 shadow-lg shadow-slate-800/20"
+              >
+                <MagnifyingGlassIcon class="w-5 h-5" />
+                Validar Documento
+              </button>
+            </div>
+          </div>
+
+          <!-- CARGANDO -->
+          <div v-else-if="buscando" class="flex flex-col items-center justify-center py-10 space-y-4">
+            <svg class="animate-spin h-12 w-12 text-slate-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-wider animate-pulse">Verificando autenticidad...</p>
+          </div>
+
+          <!-- RESULTADOS -->
+          <div v-else-if="resultadoObtenido" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            
+            <!-- ESTADO 1: DOCUMENTO VÁLIDO -->
+            <div v-if="estadoValidacion === 'VALIDO'" class="space-y-8">
+              
+              <div class="text-center space-y-4">
+                <div class="flex justify-center">
+                  <div class="relative">
+                    <div class="absolute inset-0 bg-emerald-400 blur-xl opacity-20 rounded-full"></div>
+                    <img src="/images/file-success.svg" alt="Éxito" class="relative w-20 h-20 sm:w-24 sm:h-24 drop-shadow-md" />
+                  </div>
+                </div>
+                <h3 class="text-2xl sm:text-3xl font-black text-emerald-600 uppercase tracking-tight font-outfit">
+                  Documento Válido
+                </h3>
+              </div>
+
+              <!-- Tarjeta de Información -->
+              <div class="bg-slate-50 border border-slate-100 rounded-[2rem] p-6 sm:p-8 space-y-5 shadow-inner">
+                <div class="flex flex-col border-b border-slate-200/70 pb-4">
+                  <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Tipo de Documento</span>
+                  <span class="text-sm sm:text-base font-bold text-slate-800">{{ documento?.tipo || 'Documento Oficial' }}</span>
+                </div>
+                
+                <div class="flex flex-col border-b border-slate-200/70 pb-4">
+                  <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Dirigido a</span>
+                  <span class="text-sm sm:text-base font-bold text-slate-800">{{ documento?.destinatario || 'No especificado' }}</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 border-b border-slate-200/70 pb-4">
+                  <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Correlativo</span>
+                    <span class="text-sm sm:text-base font-bold text-slate-800">{{ obtenerCodigoVisible(documento?.correlativo) }}</span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Código de Verificación</span>
+                    <span class="text-sm sm:text-base font-black text-slate-800 font-outfit uppercase tracking-widest">{{ documento?.codigo_verificacion || 'N/A' }}</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div v-if="documento?.creado_en" class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Fecha de Emisión</span>
+                    <span class="text-xs font-bold text-slate-600">{{ formatearFecha(documento.creado_en) }}</span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Fecha de Consulta</span>
+                    <span class="text-xs font-bold text-slate-600">{{ fechaConsulta }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensaje Institucional de Autenticidad -->
+              <div class="text-center px-2 sm:px-8">
+                <p class="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed italic">
+                  Este documento ha sido emitido oficialmente por el COMITÉ DE FIESTA PATRONAL 2026 "Nuestra Señora Virgen de Angosto" de Huaca Blanca - Chongoyape y su autenticidad ha sido verificada correctamente mediante este sistema.
+                </p>
+              </div>
+
+              <div class="mt-8 pt-6 border-t border-slate-100 text-center space-y-8">
+                <h4 class="text-xl sm:text-2xl font-outfit font-black text-slate-800 tracking-wide text-balance">
+                  "Dios y la Virgen bendigan su hogar."
+                </h4>
+
+                <button @click="resetearVista" class="mx-auto text-[10px] font-black text-slate-400 hover:text-slate-700 uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 px-6 py-3 rounded-full hover:bg-slate-100">
+                   <ArrowPathIcon class="w-4 h-4" />
+                   Realizar otra consulta
+                </button>
+              </div>
+
+            </div>
+
+            <!-- ESTADO 2: DOCUMENTO NO VÁLIDO -->
+            <div v-else-if="estadoValidacion === 'NO_VALIDO'" class="space-y-8">
+              
+              <div class="text-center space-y-4">
+                <div class="flex justify-center">
+                  <div class="relative">
+                    <div class="absolute inset-0 bg-red-400 blur-xl opacity-20 rounded-full"></div>
+                    <img src="/images/file-error.svg" alt="Error" class="relative w-20 h-20 sm:w-24 sm:h-24 drop-shadow-md" />
+                  </div>
+                </div>
+                <h3 class="text-2xl sm:text-3xl font-black text-red-600 uppercase tracking-tight font-outfit">
+                  Documento No Válido
+                </h3>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-100 rounded-[2rem] p-6 sm:p-8 text-center space-y-6 shadow-inner">
+                <p class="text-sm sm:text-base text-slate-700 font-medium leading-relaxed max-w-sm mx-auto">
+                  El documento consultado no registra una emisión oficial en el sistema del COMITÉ DE FIESTA PATRONAL 2026 "Nuestra Señora Virgen de Angosto" de Huaca Blanca - Chongoyape. Por lo tanto, no es posible confirmar su autenticidad ni que haya sido generado por este comité.
+                </p>
+                <div class="pt-6 border-t border-slate-200/70 inline-block px-8">
+                  <span class="block text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Fecha de Consulta</span>
+                  <span class="text-xs sm:text-sm font-bold text-slate-800">{{ fechaConsulta }}</span>
+                </div>
+              </div>
+
+              <div class="mt-8 text-center">
+                <button @click="resetearVista" class="mx-auto text-[10px] font-black text-slate-400 hover:text-slate-700 uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 px-6 py-3 rounded-full hover:bg-slate-100">
+                  <ArrowPathIcon class="w-4 h-4" />
+                  Realizar otra consulta
+                </button>
+              </div>
+
+            </div>
+
+            <!-- ESTADO 3: DOCUMENTO ANULADO -->
+            <div v-else-if="estadoValidacion === 'ANULADO'" class="space-y-8">
+              
+              <div class="text-center space-y-4">
+                <div class="flex justify-center">
+                  <div class="relative">
+                    <div class="absolute inset-0 bg-amber-400 blur-xl opacity-20 rounded-full"></div>
+                    <img src="/images/file-warning.svg" alt="Advertencia" class="relative w-20 h-20 sm:w-24 sm:h-24 drop-shadow-md" />
+                  </div>
+                </div>
+                <h3 class="text-2xl sm:text-3xl font-black text-amber-600 uppercase tracking-tight font-outfit">
+                  Documento Anulado
+                </h3>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-100 rounded-[2rem] p-6 sm:p-8 text-center space-y-6 shadow-inner">
+                <p class="text-sm sm:text-base text-slate-700 font-medium leading-relaxed max-w-sm mx-auto">
+                  Este documento fue emitido originalmente por el COMITÉ DE FIESTA PATRONAL 2026 "Nuestra Señora Virgen de Angosto" de Huaca Blanca - Chongoyape; sin embargo, actualmente se encuentra ANULADO, por lo que ha perdido su validez y no debe utilizarse como documento oficial.
+                </p>
+                <div class="pt-6 border-t border-slate-200/70 inline-block px-8">
+                  <span class="block text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Fecha de Consulta</span>
+                  <span class="text-xs sm:text-sm font-bold text-slate-800">{{ fechaConsulta }}</span>
+                </div>
+              </div>
+
+              <div class="mt-8 text-center">
+                <button @click="resetearVista" class="mx-auto text-[10px] font-black text-slate-400 hover:text-slate-700 uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 px-6 py-3 rounded-full hover:bg-slate-100">
+                  <ArrowPathIcon class="w-4 h-4" />
+                  Realizar otra consulta
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </Transition>
       </div>
-
     </div>
-
-    <!-- Footer público -->
-    <div class="text-center pt-8 text-slate-400 text-[9px] font-black uppercase tracking-widest relative z-10">
-      República del Perú · Gobierno Regional
-    </div>
+    
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '@/lib/supabaseClient'
-import { showNotification } from '@/events/notificationEvents'
-import { 
-  ShieldCheckIcon, 
-  XCircleIcon, 
-  ExclamationTriangleIcon, 
-  LockClosedIcon, 
-  InformationCircleIcon, 
-  PencilSquareIcon, 
-  CheckCircleIcon 
-} from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
 const codigoEntrada = ref('')
 const buscando = ref(false)
 const resultadoObtenido = ref(false)
 const documento = ref(null)
-const esRegistroHistorico = ref(false)
-const tokenValidado = ref(false)
+const errorValidacionToken = ref(false)
+const fechaConsulta = ref('')
+
+const estadoValidacion = computed(() => {
+  if (!documento.value) return 'NO_VALIDO'
+  if (errorValidacionToken.value) return 'NO_VALIDO'
+  if (documento.value.estado === 'Anulado') return 'ANULADO'
+  return 'VALIDO'
+})
 
 // Formatear correlativo como el código visible OF-2026-000001-HB
 const obtenerCodigoVisible = (correlativo) => {
+  if (!correlativo) return 'N/A'
   return `OF-2026-${String(correlativo).padStart(6, '0')}-HB`
+}
+
+const formatearFecha = (fechaStr) => {
+  if (!fechaStr) return ''
+  const fecha = new Date(fechaStr)
+  return fecha.toLocaleDateString('es-PE') + ' a las ' + fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+}
+
+const generarFechaConsulta = () => {
+  const ahora = new Date()
+  fechaConsulta.value = ahora.toLocaleDateString('es-PE') + ' a las ' + ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(async () => {
@@ -275,28 +271,22 @@ onMounted(async () => {
   }
 })
 
-// Ejecutar búsqueda exclusivamente por el código de verificación
+const resetearVista = () => {
+  codigoEntrada.value = ''
+  resultadoObtenido.value = false
+  documento.value = null
+  errorValidacionToken.value = false
+  fechaConsulta.value = ''
+}
+
 const buscarDocumento = async (tokenUrl = null) => {
   const input = codigoEntrada.value.trim().toUpperCase()
-  if (!input) {
-    showNotification('Ingrese el código de verificación', 'alert-warning')
-    return
-  }
-
-  // Validar formato del código ingresado (ej. ECO2026-X7Y9)
-  const regexNew = /^[A-Z]{2,4}\d{4}-[A-Z0-9]{4,5}$/i
-  
-  if (!regexNew.test(input)) {
-    showNotification('Formato de código inválido. Debe ser como ECO2026-A7K9', 'alert-warning')
-    return
-  }
+  if (!input) return
 
   buscando.value = true
   resultadoObtenido.value = false
   documento.value = null
-  esRegistroHistorico.value = false
-  tokenValidado.value = false
-  let errorValidacionToken = false
+  errorValidacionToken.value = false
 
   try {
     const { data, error } = await supabase
@@ -309,47 +299,49 @@ const buscarDocumento = async (tokenUrl = null) => {
 
     if (data) {
       if (!data.token_validacion) {
-        esRegistroHistorico.value = true
-        tokenValidado.value = true
+        // Documento antiguo o manual sin token
         documento.value = data
       } else {
         if (tokenUrl) {
           if (data.token_validacion === tokenUrl) {
             documento.value = data
-            tokenValidado.value = true
           } else {
+            // Token incorrecto
             documento.value = null
-            errorValidacionToken = true
+            errorValidacionToken.value = true
           }
         } else {
+          // Búsqueda manual
           documento.value = data
-          tokenValidado.value = false
         }
       }
     } else {
+      // Documento no encontrado
       documento.value = null
     }
 
+    generarFechaConsulta()
     resultadoObtenido.value = true
-
-    if (errorValidacionToken) {
-      showNotification('¡Alerta! Firma digital inválida o documento alterado.', 'alert-error')
-    }
   } catch (err) {
-    showNotification('Error al realizar búsqueda: ' + err.message, 'alert-error')
+    console.error('Error al realizar búsqueda:', err.message)
+    documento.value = null
+    generarFechaConsulta()
+    resultadoObtenido.value = true
   } finally {
     buscando.value = false
   }
 }
-
-const formatearFecha = (fechaStr) => {
-  if (!fechaStr) return ''
-  const fecha = new Date(fechaStr)
-  return fecha.toLocaleDateString('es-PE') + ' a las ' + fecha.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-}
-
-const obtenerFechaHoraValidacion = () => {
-  const ahora = new Date()
-  return ahora.toLocaleDateString('es-PE') + ' a las ' + ahora.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-}
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+</style>

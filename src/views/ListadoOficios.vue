@@ -15,8 +15,8 @@
       </router-link>
     </div>
 
-    <!-- Panel de Filtros Combinables (Compacto y Responsive) -->
-    <div class="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+    <!-- Panel de Filtros Combinables (Sticky, Compacto y Responsive) -->
+    <div class="sticky top-4 z-30 bg-white/95 backdrop-blur-md border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4 mb-6">
       <div class="flex items-center justify-between border-b border-slate-50 pb-2">
         <h3 class="text-xs font-black uppercase text-slate-400 tracking-wider">Filtros de Búsqueda</h3>
         <button 
@@ -35,7 +35,7 @@
           <input 
             v-model="filtros.codigo"
             type="text"
-            placeholder="Ej. OF-2026-000001-HB"
+            placeholder="Ej. OF-2026..."
             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition duration-150 focus:bg-white focus:border-jade-500 uppercase"
           />
         </div>
@@ -46,31 +46,48 @@
           <input 
             v-model="filtros.destinatario"
             type="text"
-            placeholder="Buscar por destinatario..."
+            placeholder="Buscar destinatario..."
             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition duration-150 focus:bg-white focus:border-jade-500"
           />
         </div>
 
-        <!-- Filtro: Usuario Creador -->
+        <!-- Filtro: Tipo de Oficio (NUEVO) -->
         <div class="space-y-1">
-          <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Creado Por (Usuario)</label>
+          <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Tipo de Oficio</label>
+          <select 
+            v-model="filtros.tipo"
+            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition duration-150 focus:bg-white focus:border-jade-500"
+          >
+            <option value="">Todos los tipos</option>
+            <option value="Económico">Económico</option>
+            <option value="Específico">Específico</option>
+            <option value="Invitación">Invitación</option>
+            <option value="Deportes">Deportes</option>
+          </select>
+        </div>
+
+        <!-- Filtro: Usuario Creador (Oculto temporalmente) -->
+        <!--
+        <div class="space-y-1">
+          <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Creado Por</label>
           <select 
             v-model="filtros.usuario"
             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition duration-150 focus:bg-white focus:border-jade-500"
           >
-            <option value="">Todos los usuarios</option>
+            <option value="">Todos</option>
             <option v-for="user in listaUsuarios" :key="user" :value="user">{{ user }}</option>
           </select>
         </div>
+        -->
 
         <!-- Filtro: Estado -->
         <div class="space-y-1">
-          <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Estado del Documento</label>
+          <label class="block text-[10px] font-black uppercase text-slate-400 ml-1">Estado</label>
           <select 
             v-model="filtros.estado"
             class="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition duration-150 focus:bg-white focus:border-jade-500"
           >
-            <option value="">Todos los estados</option>
+            <option value="">Todos</option>
             <option value="Emitido">Emitido</option>
             <option value="Entregado">Entregado</option>
             <option value="Con Respuesta">Con Respuesta</option>
@@ -95,7 +112,7 @@
       <!-- 1. VISTA DE TARJETAS EN MÓVILES (Oculta en md/lg) -->
       <div class="block lg:hidden space-y-3">
         <div 
-          v-for="(oficio, index) in oficiosFiltrados" 
+          v-for="(oficio, index) in oficiosPaginados" 
           :key="oficio.id" 
           class="bg-white border rounded-2xl p-4 shadow-sm flex flex-col justify-between gap-3 transition duration-150 hover:shadow-md"
           :class="{
@@ -110,7 +127,7 @@
             <div class="flex items-center gap-2">
               <input type="checkbox" :value="oficio" v-model="seleccionados" class="rounded border-slate-200 text-jade-600 focus:ring-jade-500/20 w-4 h-4 cursor-pointer align-middle mr-1" />
               <span class="w-5.5 h-5.5 rounded-lg bg-slate-50 text-slate-500 font-black text-[10px] flex items-center justify-center font-outfit border border-slate-100">
-                {{ index + 1 }}
+                {{ calcularIndice(index) }}
               </span>
               <div>
                 <span class="text-xs font-black text-slate-900 block font-outfit">
@@ -219,7 +236,7 @@
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr 
-                v-for="(oficio, index) in oficiosFiltrados" 
+                v-for="(oficio, index) in oficiosPaginados" 
                 :key="oficio.id" 
                 :class="{
                   'bg-red-50/20 hover:bg-red-50/30': oficio.estado === 'Anulado',
@@ -235,7 +252,7 @@
                 </td>
                 <!-- Número de Fila -->
                 <td class="px-4 py-3 text-center text-slate-400 font-bold font-outfit">
-                  {{ index + 1 }}
+                  {{ calcularIndice(index) }}
                 </td>
                 <!-- Código de Oficio -->
                 <td class="px-6 py-3">
@@ -337,6 +354,32 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Controles de Paginación -->
+      <div v-if="oficiosFiltrados.length > 0" class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-sm">
+        <div class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest text-center sm:text-left">
+          Mostrando <span class="text-slate-900 font-black">{{ (paginaActual - 1) * registrosPorPagina + 1 }}</span> - <span class="text-slate-900 font-black">{{ Math.min(paginaActual * registrosPorPagina, oficiosFiltrados.length) }}</span> de <span class="text-slate-900 font-black">{{ oficiosFiltrados.length }}</span> oficios
+        </div>
+        <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+          <button 
+            @click="cambiarPagina(paginaActual - 1)" 
+            :disabled="paginaActual === 1"
+            class="px-3 sm:px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-[10px] sm:text-xs uppercase tracking-wider hover:bg-slate-100 disabled:opacity-50 transition active:scale-95"
+          >
+            Anterior
+          </button>
+          <div class="text-[10px] sm:text-xs font-black text-slate-700 px-2 sm:px-4 uppercase tracking-widest text-center min-w-[100px]">
+            Pág. {{ paginaActual }} de {{ totalPaginas }}
+          </div>
+          <button 
+            @click="cambiarPagina(paginaActual + 1)" 
+            :disabled="paginaActual === totalPaginas || totalPaginas === 0"
+            class="px-3 sm:px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-bold text-[10px] sm:text-xs uppercase tracking-wider hover:bg-slate-100 disabled:opacity-50 transition active:scale-95"
+          >
+            Siguiente
+          </button>
         </div>
       </div>
 
@@ -875,9 +918,50 @@ const dropdownStyle = computed(() => {
 const filtros = ref({
   codigo: '',
   destinatario: '',
-  usuario: '',
-  estado: ''
+  usuario: '', // Oculto en UI pero conservado en estado
+  estado: '',
+  tipo: ''
 })
+
+// Paginación adaptativa
+const paginaActual = ref(1)
+const registrosPorPagina = ref(10)
+
+const actualizarRegistrosPorPagina = () => {
+  const width = window.innerWidth
+  if (width < 640) {
+    registrosPorPagina.value = 5 // Móvil
+  } else if (width < 1024) {
+    registrosPorPagina.value = 10 // Tablet
+  } else {
+    registrosPorPagina.value = 15 // Escritorio
+  }
+  
+  if (paginaActual.value > totalPaginas.value && totalPaginas.value > 0) {
+    paginaActual.value = totalPaginas.value
+  }
+}
+
+const oficiosPaginados = computed(() => {
+  const inicio = (paginaActual.value - 1) * registrosPorPagina.value
+  const fin = inicio + registrosPorPagina.value
+  return oficiosFiltrados.value.slice(inicio, fin)
+})
+
+const totalPaginas = computed(() => {
+  return Math.ceil(oficiosFiltrados.value.length / registrosPorPagina.value) || 1
+})
+
+const cambiarPagina = (nuevaPagina) => {
+  if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
+    paginaActual.value = nuevaPagina
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const calcularIndice = (index) => {
+  return (paginaActual.value - 1) * registrosPorPagina.value + index + 1
+}
 
 // Retorna la fecha local actual en formato YYYY-MM-DD (evita el desfase UTC de toISOString())
 const obtenerFechaLocalHoy = () => {
@@ -888,9 +972,10 @@ const obtenerFechaLocalHoy = () => {
   return `${y}-${m}-${d}`
 }
 
-// Limpiar la selección si cambian los filtros (declarado aquí, después de filtros)
+// Limpiar la selección y reiniciar paginación si cambian los filtros
 watch(filtros, () => {
   seleccionados.value = []
+  paginaActual.value = 1 // Reiniciar siempre a página 1 al filtrar
 }, { deep: true })
 
 const limpiarFiltros = () => {
@@ -898,7 +983,8 @@ const limpiarFiltros = () => {
     codigo: '',
     destinatario: '',
     usuario: '',
-    estado: ''
+    estado: '',
+    tipo: ''
   }
 }
 
@@ -936,6 +1022,11 @@ const oficiosFiltrados = computed(() => {
     // 4. Filtrar por Estado (exacta)
     if (filtros.value.estado) {
       if (o.estado !== filtros.value.estado) return false
+    }
+
+    // 5. Filtrar por Tipo de Oficio (exacta)
+    if (filtros.value.tipo) {
+      if (o.tipo !== filtros.value.tipo) return false
     }
 
     return true
@@ -1271,6 +1362,8 @@ const suscribirTiempoReal = () => {
 }
 
 onMounted(() => {
+  actualizarRegistrosPorPagina()
+  window.addEventListener('resize', actualizarRegistrosPorPagina)
   cargarOficios()
   suscribirTiempoReal()
   window.addEventListener('click', cerrarDropdowns)
@@ -1282,6 +1375,7 @@ onUnmounted(() => {
   if (channel) {
     supabase.removeChannel(channel)
   }
+  window.removeEventListener('resize', actualizarRegistrosPorPagina)
   window.removeEventListener('click', cerrarDropdowns)
   window.removeEventListener('scroll', cerrarDropdowns)
   document.removeEventListener('scroll', cerrarDropdowns, { capture: true })
