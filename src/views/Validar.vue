@@ -56,7 +56,10 @@
             </div>
 
             <div class="space-y-4">
-              <input v-model="codigoEntrada" type="text" placeholder="Ej. ECO2026-A7K9"
+              <input 
+                :value="codigoEntrada" 
+                @input="codigoEntrada = $event.target.value"
+                type="text" placeholder="Ej. ECO2026-A7K9"
                 class="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-sm font-bold text-slate-700 outline-none transition duration-200 hover:border-slate-200 focus:bg-white focus:ring-4 focus:ring-slate-500/10 focus:border-slate-400 uppercase text-center tracking-widest placeholder:normal-case placeholder:tracking-normal placeholder:font-normal"
                 @keyup.enter="buscarDocumento()" />
               <button 
@@ -64,12 +67,12 @@
                 :class="[
                   'w-full font-black text-xs uppercase tracking-widest py-4 rounded-2xl transition-all duration-500 flex justify-center items-center gap-2',
                   codigoEntrada && !buscando
-                    ? 'bg-blue-600 active:bg-blue-700 text-white shadow-[0_8px_25px_rgba(37,99,235,0.4)] active:scale-[0.96] ring-4 ring-blue-600/20'
+                    ? 'bg-slate-800 active:bg-slate-900 text-white shadow-[0_8px_25px_rgba(30,41,59,0.4)] active:scale-[0.96] ring-4 ring-slate-800/20'
                     : 'bg-slate-200 text-slate-400/80 cursor-not-allowed scale-[0.98]'
                 ]">
                 <MagnifyingGlassIcon 
                   class="w-5 h-5 transition-transform duration-300" 
-                  :class="codigoEntrada && !buscando ? 'animate-bounce' : ''" 
+                  :class="codigoEntrada && !buscando ? 'animate-bounce text-emerald-400' : ''" 
                 />
                 <span>Validar Documento</span>
               </button>
